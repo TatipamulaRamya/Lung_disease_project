@@ -1,0 +1,71 @@
+# macOS / editor noise
+.DS_Store
+.Rhistory
+.idea/
+.vscode/
+*.iml
+
+# Python caches / environments
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.py[cod]
+*.egg-info/
+
+# Android / Gradle generated files
+.gradle/
+.gradle-home/
+.kotlin/
+**/gradle/gradle-*-bin.zip
+build/
+app/build/
+local.properties
+captures/
+
+# Secrets and signing files
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# Generated app artifacts
+*.apk
+*.aab
+share_package/
+qa_artifacts/
+current-ui*.png
+release-*.png
+*-check.png
+
+# Large datasets and downloaded source archives
+dataset_final.zip
+respiratory_ai_rebuild_colab_project*.zip
+_docx_test.*
+respiratory_ai_rebuild/data/
+respiratory_ai_rebuild/data_paper/
+respiratory_ai_rebuild/dataset_final/
+respiratory_ai_rebuild/dataset_final_gap_augmented/
+respiratory_ai_rebuild/dataset_final_pneumonia_focus/
+respiratory_ai_rebuild/**/paper_sources/
+
+# Training outputs. Keep only final deployable model files if deliberately force-added.
+respiratory_ai_rebuild/.mplconfig/
+respiratory_ai_rebuild/models_strong_cnn_pneumonia_focus/
+respiratory_ai_rebuild/models_final_local/**
+!respiratory_ai_rebuild/models_final_local/
+!respiratory_ai_rebuild/models_final_local/latest/
+!respiratory_ai_rebuild/models_final_local/latest/best_model.keras
+!respiratory_ai_rebuild/models_final_local/latest/class_names.json
+
+# Uploaded or generated audio
+uploads/
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.ogg
+*.flac
+*.webm
+*.3gp

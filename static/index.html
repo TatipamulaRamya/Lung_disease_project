@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Respiratory AI Screening</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero">
+        <p class="eyebrow">Web + Edge Ready Screening</p>
+        <h1>AI-assisted breathing sound analysis for early respiratory screening.</h1>
+        <p class="hero-copy">
+          Upload a breathing sound captured from a digital stethoscope, smartphone, or low-cost device and get a
+          condition estimate, severity flag, and a clinician-friendly report.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel upload-panel">
+          <h2>Analyze Recording</h2>
+          <form id="upload-form">
+            <label class="file-picker" for="audio-file">
+              <span>Select audio file</span>
+              <input id="audio-file" name="file" type="file" accept=".wav,.mp3,.m4a,.flac,.ogg" required />
+            </label>
+            <button id="submit-button" type="submit">Run screening</button>
+          </form>
+          <p id="status-message" class="status idle">Waiting for a breathing recording.</p>
+        </article>
+
+        <article class="panel pipeline-panel">
+          <h2>System Flow</h2>
+          <div class="pipeline-list">
+            <div class="pipeline-step">
+              <strong>1. Upload</strong>
+              <span>Capture from stethoscope, smartphone, or Raspberry Pi.</span>
+            </div>
+            <div class="pipeline-step">
+              <strong>2. Feature Extraction</strong>
+              <span>MFCC, chroma, spectral, and temporal features summarize lung acoustics.</span>
+            </div>
+            <div class="pipeline-step">
+              <strong>3. Inference</strong>
+              <span>Current MVP uses a swappable baseline that can later be replaced by CNN or CNN-LSTM models.</span>
+            </div>
+            <div class="pipeline-step">
+              <strong>4. Clinical Output</strong>
+              <span>Condition label, severity level, urgent alert, explainability regions, and report.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel results-panel">
+        <div class="panel-heading">
+          <h2>Screening Result</h2>
+          <span class="badge">MVP demo</span>
+        </div>
+        <div id="results" class="results empty">
+          <p>Results will appear here after you upload an audio file.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+  </html>

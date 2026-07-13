@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+data/audio/
+data/metadata/
+data/splits/
+models/latest/
+models/*/
+reports/*

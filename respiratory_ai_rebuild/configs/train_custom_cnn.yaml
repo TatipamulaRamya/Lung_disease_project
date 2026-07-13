@@ -1,0 +1,36 @@
+paths:
+  data_root: dataset_final
+  models_root: models_custom_cnn
+
+audio:
+  sample_rate: 4000
+  duration_seconds: 5.0
+  trim_top_db: 30
+  n_mels: 128
+  n_fft: 512
+  hop_length: 128
+  fmin: 50
+  fmax: 2000
+  use_deltas: true
+
+train:
+  seed: 42
+  batch_size: 24
+  epochs: 35
+  learning_rate: 0.0002
+  label_smoothing: 0.02
+  architecture: custom_cnn
+  dropout: 0.35
+  dense_units: 192
+  freeze_backbone: false
+  model_name: respiratory_classifier_custom_cnn
+
+app:
+  host: 0.0.0.0
+  port: 8080
+  allowed_extensions:
+    - .wav
+    - .mp3
+    - .flac
+    - .ogg
+    - .m4a

@@ -1,0 +1,30 @@
+# Copy this file to a new YAML file, fill in the real paths, and run:
+#   PYTHONPATH=src python -m resp_ai.data.prepare_extended_dataset --manifest /path/to/your_manifest.yaml
+
+output_root: /Users/diyarao/Documents/Playground/respiratory_ai_rebuild/data_extended
+
+sources:
+  - parser: icbhi
+    root: /Users/diyarao/Major Project/respiratory-sound-database
+    diagnosis_path: /Users/diyarao/Documents/Playground/respiratory_ai_rebuild/data/external/paper_sources/icbhi_diagnosis.txt
+    split_path: /Users/diyarao/Documents/Playground/respiratory_ai_rebuild/data/external/paper_sources/icbhi_train_test.txt
+
+  - parser: chest_wall
+    root: /Users/diyarao/Major Project/mendley
+
+  # Add new matched-source datasets here as you collect them.
+  # The metadata CSV must include at least:
+  #   file_path, patient_id, raw_label
+  # Optional columns:
+  #   source_filename, official_source_split, label
+  #
+  # - parser: manifest_csv
+  #   source_name: extra_clinic_batch_01
+  #   metadata_csv: /absolute/path/to/metadata.csv
+  #   audio_root: /absolute/path/to/audio
+  #   file_path_column: file_path
+  #   patient_id_column: patient_id
+  #   raw_label_column: raw_label
+  #   # label_column: label
+  #   # split_column: official_source_split
+  #   # source_filename_column: source_filename

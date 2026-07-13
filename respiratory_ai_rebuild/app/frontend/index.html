@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PneumoScan — Respiratory Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root {
+  --bg:#03080f; --panel:#0b1828; --panel2:#0f2035;
+  --border:rgba(56,189,248,.10); --border-hi:rgba(56,189,248,.30);
+  --sky:#38bdf8; --mint:#34d399; --amber:#fbbf24; --rose:#fb7185; --violet:#a78bfa;
+  --text:#dff0fc; --muted:#4d7fa8; --dim:#2a506e;
+  --r-sm:10px; --r-md:16px; --r-lg:24px; --da:var(--sky);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;line-height:1.5;}
+
+.atm{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.atm::after{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:.025;}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);animation:drift 24s ease-in-out infinite alternate;}
+.orb-1{width:800px;height:800px;top:-300px;left:-300px;background:radial-gradient(circle,rgba(56,189,248,.18),transparent 65%);animation-duration:26s;}
+.orb-2{width:600px;height:600px;top:40%;right:-200px;background:radial-gradient(circle,rgba(167,139,250,.14),transparent 65%);animation-duration:20s;animation-delay:-8s;}
+.orb-3{width:500px;height:500px;bottom:-100px;left:25%;background:radial-gradient(circle,rgba(251,113,133,.10),transparent 65%);animation-duration:30s;animation-delay:-14s;}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(50px,40px) scale(1.1)}}
+.grid-lines{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(56,189,248,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.03) 1px,transparent 1px);background-size:60px 60px;}
+
+.wrapper{position:relative;z-index:1;max-width:1020px;margin:0 auto;padding:0 28px 100px;}
+
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  background:rgba(3,8,15,.88);backdrop-filter:blur(20px);
+  border-bottom:1px solid transparent;transition:border-color .3s;
+  margin:0 -28px;padding:18px 28px;
+}
+header.scrolled{border-bottom-color:var(--border);}
+.logo{display:flex;align-items:center;gap:12px;cursor:pointer;}
+.logo-mark{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--sky),var(--violet));display:grid;place-items:center;font-size:19px;box-shadow:0 0 24px rgba(56,189,248,.35),0 0 0 1px rgba(56,189,248,.2);}
+.logo-name{font-size:20px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,var(--text),rgba(255,255,255,.6));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-name span{-webkit-text-fill-color:var(--sky);}
+nav{display:flex;align-items:center;gap:4px;}
+.nav-link{font-size:14px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:8px 16px;border-radius:var(--r-sm);transition:all .2s;letter-spacing:.2px;}
+.nav-link:hover{color:var(--text);background:rgba(56,189,248,.06);}
+.nav-link.active{color:var(--sky);background:rgba(56,189,248,.10);}
+
+.page{display:none;}
+.page.active{display:block;animation:fadeUp .45s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+.hero{padding:68px 0 50px;}
+.hero-eyebrow{font-family:'Fira Code',monospace;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--sky);opacity:.8;margin-bottom:22px;display:flex;align-items:center;gap:10px;}
+.hero-eyebrow::before{content:'';display:block;width:28px;height:1px;background:var(--sky);opacity:.6;}
+.hero-title{font-family:'Lora',serif;font-size:clamp(36px,6.5vw,68px);font-weight:500;line-height:1.08;letter-spacing:-1px;margin-bottom:22px;}
+.hero-title .hl{font-style:italic;background:linear-gradient(90deg,var(--sky),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-desc{max-width:560px;font-size:16px;font-weight:400;color:var(--muted);line-height:1.75;}
+
+.main-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:38px 34px;position:relative;overflow:hidden;margin-top:40px;}
+.main-card::before{content:'';position:absolute;inset:0;background:linear-gradient(145deg,rgba(56,189,248,.04),transparent 60%);pointer-events:none;}
+.drop-zone{border:1.5px dashed var(--border-hi);border-radius:var(--r-md);padding:48px 28px;text-align:center;cursor:pointer;transition:all .35s;position:relative;}
+.drop-zone:hover{border-color:var(--sky);background:rgba(56,189,248,.03);}
+.drop-zone.dragover{border-color:var(--sky);background:rgba(56,189,248,.06);box-shadow:0 0 60px rgba(56,189,248,.12);}
+.dz-icon{width:68px;height:68px;margin:0 auto 18px;border-radius:18px;background:linear-gradient(135deg,rgba(56,189,248,.12),rgba(167,139,250,.12));border:1px solid rgba(56,189,248,.2);display:grid;place-items:center;font-size:28px;box-shadow:0 8px 32px rgba(56,189,248,.12);transition:transform .3s;}
+.drop-zone:hover .dz-icon{transform:scale(1.06) translateY(-2px);}
+.dz-title{font-size:17px;font-weight:700;margin-bottom:7px;}
+.dz-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.dz-formats{font-family:'Fira Code',monospace;font-size:11px;color:var(--dim);background:var(--panel2);padding:6px 16px;border-radius:99px;display:inline-block;border:1px solid var(--border);}
+#file-input{display:none;}
+.btn-choose{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1.5px solid var(--sky);color:var(--sky);font-family:'Syne',sans-serif;font-weight:600;font-size:13px;padding:10px 24px;border-radius:var(--r-sm);cursor:pointer;margin-top:18px;transition:all .25s;}
+.btn-choose:hover{background:rgba(56,189,248,.1);box-shadow:0 0 20px rgba(56,189,248,.2);}
+
+.waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:40px;margin:20px 0 4px;}
+.wb{width:3px;border-radius:99px;background:linear-gradient(180deg,var(--sky),var(--violet));opacity:.25;animation:wave-idle 2s ease-in-out infinite;}
+.wb:nth-child(2n){animation-delay:.15s;opacity:.2;}.wb:nth-child(3n){animation-delay:.3s;}.wb:nth-child(5n){animation-delay:.5s;opacity:.3;}.wb:nth-child(7n){animation-delay:.7s;}
+@keyframes wave-idle{0%,100%{height:5px;opacity:.2}50%{height:22px;opacity:.55}}
+.waveform.active .wb{opacity:.7;animation:wave-pulse .5s ease-in-out infinite;}
+.waveform.active .wb:nth-child(2n){animation-delay:.1s;}.waveform.active .wb:nth-child(3n){animation-delay:.2s;}
+@keyframes wave-pulse{0%,100%{height:6px}50%{height:calc(6px + 24px * var(--h,.5))}}
+
+.file-info-strip{display:none;align-items:center;gap:14px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:15px 20px;margin-top:18px;}
+.file-info-strip.show{display:flex;}
+.fis-icon{font-size:24px;flex-shrink:0;}
+.fis-meta{flex:1;min-width:0;}
+.fis-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fis-size{font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);margin-top:3px;}
+.btn-clear{background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;padding:6px 13px;border-radius:8px;font-size:12px;transition:all .2s;font-family:'Syne',sans-serif;flex-shrink:0;}
+.btn-clear:hover{border-color:var(--rose);color:var(--rose);}
+
+.record-card{margin-top:18px;background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+.record-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.record-title{font-size:15px;font-weight:700;}
+.record-copy{font-size:12px;color:var(--muted);margin-top:4px;}
+.record-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-record{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:10px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-record.start{background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.35);color:var(--sky);}
+.btn-record.stop{background:rgba(251,113,133,.10);border:1px solid rgba(251,113,133,.35);color:var(--rose);}
+.btn-record:disabled{opacity:.45;cursor:not-allowed;}
+.record-status{font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6;}
+.record-status.live{color:var(--rose);}
+.record-preview{width:100%;margin-top:14px;display:none;}
+.record-preview.show{display:block;}
+
+.btn-analyse{width:100%;margin-top:22px;padding:17px;background:linear-gradient(135deg,var(--sky),var(--violet));color:var(--bg);font-family:'Syne',sans-serif;font-weight:800;font-size:15px;border:none;border-radius:13px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:10px;transition:all .3s;box-shadow:0 8px 32px rgba(56,189,248,.28);}
+.btn-analyse.show{display:flex;}
+.btn-analyse:hover{transform:translateY(-3px);box-shadow:0 14px 44px rgba(56,189,248,.42);}
+.btn-analyse:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+
+.loading-panel{display:none;flex-direction:column;align-items:center;gap:20px;padding:38px;text-align:center;}
+.loading-panel.show{display:flex;}
+.spinner-ring{width:52px;height:52px;position:relative;}
+.spinner-ring::before,.spinner-ring::after{content:'';position:absolute;inset:0;border-radius:50%;}
+.spinner-ring::before{border:2px solid var(--border);}
+.spinner-ring::after{border:2px solid transparent;border-top-color:var(--sky);border-right-color:rgba(56,189,248,.4);animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-size:15px;font-weight:600;}
+.loading-steps{font-family:'Fira Code',monospace;font-size:12px;display:flex;flex-direction:column;gap:6px;width:100%;max-width:360px;}
+.ls{padding:8px 16px;border-radius:8px;border:1px solid var(--border);color:var(--dim);transition:all .3s;text-align:left;}
+.ls.active{border-color:rgba(56,189,248,.35);color:var(--sky);background:rgba(56,189,248,.05);}
+.ls.done{color:var(--mint);border-color:rgba(52,211,153,.25);background:rgba(52,211,153,.04);}
+.ls.done::before{content:'✓ ';}
+
+.error-box{display:none;align-items:flex-start;gap:12px;background:rgba(251,113,133,.06);border:1px solid rgba(251,113,133,.25);border-radius:12px;padding:16px 20px;margin-top:18px;font-size:14px;color:var(--rose);}
+.error-box.show{display:flex;}
+.error-box p{line-height:1.6;}
+
+.results{display:none;margin-top:26px;}
+.results.show{display:block;animation:fadeUp .55s ease both;}
+
+.alert-banner{display:none;align-items:center;gap:14px;border-radius:14px;padding:18px 22px;margin-bottom:18px;border:1px solid;animation:pulseAlert 2.5s ease-in-out infinite;}
+.alert-banner.show{display:flex;}
+.alert-banner.urgent{background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.4);color:var(--rose);}
+.alert-banner.warning{background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.35);color:var(--amber);}
+@keyframes pulseAlert{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 24px rgba(251,113,133,.12)}}
+.alert-icon{font-size:22px;flex-shrink:0;}
+.alert-text strong{display:block;font-size:15px;font-weight:700;margin-bottom:2px;}
+.alert-text span{font-size:13px;opacity:.8;}
+
+.diagnosis-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-lg);padding:34px 32px;position:relative;overflow:hidden;margin-bottom:18px;}
+.diagnosis-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--da),transparent 80%);}
+.diagnosis-card::after{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;background:radial-gradient(circle,var(--da),transparent 65%);opacity:.07;pointer-events:none;}
+.dc-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.db-eyebrow{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.db-disease{font-family:'Lora',serif;font-size:clamp(36px,7vw,58px);font-style:italic;color:var(--da);line-height:1;margin-bottom:8px;}
+.db-conf{font-family:'Fira Code',monospace;font-size:13px;color:var(--muted);}
+.db-conf strong{font-size:17px;color:var(--da);font-weight:500;}
+.db-meta{font-family:'Fira Code',monospace;font-size:11px;color:var(--dim);margin-top:12px;line-height:1.8;}
+.conf-track{height:5px;background:var(--panel2);border-radius:99px;overflow:hidden;max-width:320px;margin-top:14px;}
+.conf-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--da),rgba(255,255,255,.3));width:0;transition:width 1.4s cubic-bezier(.22,1,.36,1);}
+
+.severity-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:700;letter-spacing:.5px;border:1.5px solid;flex-shrink:0;margin-top:4px;}
+.sev-dot{width:8px;height:8px;border-radius:50%;animation:sevPulse 1.5s ease-in-out infinite;}
+@keyframes sevPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.sev-low{color:var(--mint);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.07);}
+.sev-low .sev-dot{background:var(--mint);}
+.sev-medium{color:var(--amber);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07);}
+.sev-medium .sev-dot{background:var(--amber);}
+.sev-high{color:var(--rose);border-color:rgba(251,113,133,.4);background:rgba(251,113,133,.07);}
+.sev-high .sev-dot{background:var(--rose);}
+
+.prob-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.prob-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:19px 17px;position:relative;overflow:hidden;transition:border-color .25s,transform .25s;}
+.prob-card:hover{transform:translateY(-2px);border-color:var(--border-hi);}
+.prob-card.winner{border-color:var(--da)!important;}
+.prob-card-bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--pc);width:0;transition:width 1.2s cubic-bezier(.22,1,.36,1);}
+.pc-label{font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--muted);margin-bottom:7px;}
+.pc-val{font-family:'Fira Code',monospace;font-size:22px;font-weight:500;color:var(--pc);line-height:1;}
+
+.visual-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:28px 30px;margin-bottom:18px;}
+.vc-title{font-family:'Lora',serif;font-size:19px;font-weight:500;margin-bottom:6px;}
+.vc-sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.65;}
+.spectrogram-wrap{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+#spectrogram-canvas{display:block;width:100%;height:160px;}
+.hm-legend{display:flex;align-items:center;justify-content:space-between;margin-top:12px;}
+.hm-legend-bar{flex:1;height:7px;border-radius:99px;background:linear-gradient(90deg,rgba(56,189,248,.2),var(--amber),var(--rose));margin:0 12px;}
+.hm-label{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);}
+.region-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.region-tag{font-family:'Fira Code',monospace;font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid;}
+.rt-high{color:var(--rose);border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.07);}
+.rt-medium{color:var(--amber);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.07);}
+.rt-low{color:var(--mint);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.06);}
+
+.info-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:28px 30px;margin-bottom:18px;}
+.info-card h3{font-family:'Lora',serif;font-size:20px;font-weight:500;margin-bottom:10px;}
+.info-card p{font-size:14px;color:var(--muted);line-height:1.8;}
+.rec-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+.rec-item{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;}
+.rec-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.rec-text{font-size:13px;color:var(--muted);line-height:1.6;}
+.rec-text strong{display:block;color:var(--text);font-size:13px;margin-bottom:2px;}
+.disclaimer{margin-top:18px;padding:14px 18px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.22);border-radius:10px;font-size:13px;color:rgba(251,191,36,.8);display:flex;gap:10px;align-items:flex-start;line-height:1.6;}
+
+.btn-report{width:100%;padding:16px;background:var(--panel);border:1.5px solid var(--border-hi);color:var(--text);font-family:'Syne',sans-serif;font-weight:700;font-size:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .3s;margin-top:4px;}
+.btn-report:hover{border-color:var(--sky);background:rgba(56,189,248,.06);box-shadow:0 0 30px rgba(56,189,248,.12);}
+
+.about-hero{padding:64px 0 46px;}
+.about-hero h1{font-family:'Lora',serif;font-size:clamp(32px,5.5vw,56px);font-weight:500;line-height:1.1;margin-bottom:16px;}
+.about-hero h1 em{font-style:italic;color:var(--sky);}
+.about-hero p{font-size:16px;color:var(--muted);line-height:1.8;max-width:620px;}
+
+.about-section{margin-bottom:52px;}
+.about-section-label{font-family:'Fira Code',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--sky);margin-bottom:10px;}
+.about-section h2{font-family:'Lora',serif;font-size:26px;font-weight:500;margin-bottom:22px;}
+
+.overview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:0;}
+.ov-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:26px 22px;position:relative;overflow:hidden;transition:border-color .3s,transform .3s;}
+.ov-card:hover{border-color:var(--border-hi);transform:translateY(-4px);}
+.ov-card::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,var(--sky),var(--violet));opacity:0;transition:opacity .3s;}
+.ov-card:hover::after{opacity:1;}
+.ov-num{font-family:'Fira Code',monospace;font-size:10px;color:var(--sky);letter-spacing:2px;margin-bottom:13px;}
+.ov-icon{font-size:26px;margin-bottom:11px;}
+.ov-name{font-size:14px;font-weight:700;margin-bottom:6px;}
+.ov-desc{font-size:13px;color:var(--muted);line-height:1.7;}
+
+.outputs-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.out-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);padding:22px 20px;display:flex;gap:14px;align-items:flex-start;transition:border-color .25s;}
+.out-card:hover{border-color:var(--border-hi);}
+.out-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
+.out-body h4{font-size:14px;font-weight:700;margin-bottom:5px;}
+.out-body p{font-size:13px;color:var(--muted);line-height:1.65;}
+
+.perf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px;}
+.perf-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 16px;}
+.perf-val{font-family:'Fira Code',monospace;font-size:22px;font-weight:500;color:var(--mint);margin-bottom:4px;}
+.perf-label{font-size:11px;color:var(--muted);letter-spacing:.5px;}
+
+footer{margin-top:80px;padding:24px 0;border-top:1px solid var(--border);font-family:'Fira Code',monospace;font-size:11px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+@media(max-width:700px){
+  .overview-grid,.prob-grid,.perf-grid{grid-template-columns:1fr 1fr;}
+  .outputs-grid,.rec-grid{grid-template-columns:1fr;}
+  .hero-title,.about-hero h1{font-size:34px;}
+  .main-card,.diagnosis-card,.visual-card,.info-card{padding:24px 18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="atm"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+<div class="grid-lines"></div>
+
+<div class="wrapper">
+
+<header id="site-header">
+  <div class="logo" onclick="showPage('home')">
+    <div class="logo-mark">🫁</div>
+    <div class="logo-name">Pneumo<span>Scan</span></div>
+  </div>
+  <nav>
+    <button class="nav-link active" id="nav-home" onclick="showPage('home')">Home</button>
+    <button class="nav-link" id="nav-about" onclick="showPage('about')">About</button>
+  </nav>
+</header>
+
+<div class="page active" id="page-home">
+
+  <section class="hero">
+    <div class="hero-eyebrow">AI-Powered Respiratory Analysis</div>
+    <h1 class="hero-title">Listen to what<br /><span class="hl">lungs reveal</span></h1>
+    <p class="hero-desc">Upload a respiratory audio recording. PneumoScan now uses the rebuilt multi-window strong CNN pipeline to analyse acoustic patterns, estimate severity, and surface the model's real attention heatmap from the uploaded recording.</p>
+  </section>
+
+  <div class="main-card">
+    <div class="drop-zone" id="drop-zone" onclick="openFilePicker()">
+      <div class="dz-icon">🎙️</div>
+      <div class="dz-title">Drop your lung sound recording here</div>
+      <div class="dz-sub">Drag and drop, or click to browse your device</div>
+      <div class="dz-formats">WAV &nbsp;·&nbsp; MP3 &nbsp;·&nbsp; FLAC &nbsp;·&nbsp; OGG &nbsp;·&nbsp; M4A</div>
+      <button class="btn-choose" onclick="event.stopPropagation();openFilePicker()">↑ &nbsp;Choose Audio File</button>
+      <input type="file" id="file-input" accept=".wav,.mp3,.flac,.ogg,.m4a" />
+    </div>
+
+    <div class="waveform" id="waveform">
+      <div class="wb" style="--h:.35"></div><div class="wb" style="--h:.65"></div><div class="wb" style="--h:.85"></div>
+      <div class="wb" style="--h:.5"></div><div class="wb" style="--h:1"></div><div class="wb" style="--h:.7"></div>
+      <div class="wb" style="--h:.45"></div><div class="wb" style="--h:.8"></div><div class="wb" style="--h:.95"></div>
+      <div class="wb" style="--h:.55"></div><div class="wb" style="--h:.75"></div><div class="wb" style="--h:.4"></div>
+      <div class="wb" style="--h:.6"></div><div class="wb" style="--h:.88"></div><div class="wb" style="--h:.5"></div>
+      <div class="wb" style="--h:.72"></div><div class="wb" style="--h:.38"></div><div class="wb" style="--h:.65"></div>
+      <div class="wb" style="--h:.9"></div><div class="wb" style="--h:.48"></div><div class="wb" style="--h:.77"></div>
+      <div class="wb" style="--h:.55"></div><div class="wb" style="--h:.83"></div><div class="wb" style="--h:.42"></div>
+    </div>
+
+    <div class="file-info-strip" id="file-info">
+      <div class="fis-icon">🎵</div>
+      <div class="fis-meta">
+        <div class="fis-name" id="fname"></div>
+        <div class="fis-size" id="fsize"></div>
+      </div>
+      <button class="btn-clear" onclick="clearFile()">✕ &nbsp;Clear</button>
+    </div>
+
+    <div class="record-card">
+      <div class="record-head">
+        <div>
+          <div class="record-title">Live microphone recording</div>
+          <div class="record-copy">Allow microphone access, record inside the browser, then analyse the saved WAV clip.</div>
+        </div>
+        <div class="record-actions">
+          <button class="btn-record start" id="btn-record-start" type="button" onclick="startRecording()">🎙 Start recording</button>
+          <button class="btn-record stop" id="btn-record-stop" type="button" onclick="stopRecording()" disabled>■ Stop</button>
+        </div>
+      </div>
+      <div class="record-status" id="record-status">Microphone idle. Recording will stay selected until you choose another file.</div>
+      <audio class="record-preview" id="record-preview" controls></audio>
+    </div>
+
+    <button class="btn-analyse" id="btn-analyse" onclick="runAnalysis()">
+      <span>🔬</span>&nbsp; Analyse Lung Sound
+    </button>
+
+    <div class="loading-panel" id="loading-panel">
+      <div class="spinner-ring"></div>
+      <div class="loading-title">Processing audio...</div>
+      <div class="loading-steps">
+        <div class="ls" id="ls1">① Reading, trimming and resampling to 4 kHz</div>
+        <div class="ls" id="ls2">② Building multi-window mel + delta features</div>
+        <div class="ls" id="ls3">③ Running strong CNN across recording windows</div>
+        <div class="ls" id="ls4">④ Aggregating probabilities and generating heatmap</div>
+      </div>
+    </div>
+
+    <div class="error-box" id="error-box">
+      <span>⚠️</span><p id="error-msg"></p>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="alert-banner" id="alert-banner">
+      <div class="alert-icon" id="alert-icon"></div>
+      <div class="alert-text">
+        <strong id="alert-title"></strong>
+        <span id="alert-body"></span>
+      </div>
+    </div>
+
+    <div class="diagnosis-card" id="diag-card">
+      <div class="dc-top">
+        <div class="dc-left">
+          <div class="db-eyebrow">Predicted Diagnosis</div>
+          <div class="db-disease" id="diag-disease"></div>
+          <div class="db-conf">Confidence: <strong id="diag-conf"></strong></div>
+          <div class="db-meta" id="diag-meta"></div>
+        </div>
+        <div class="severity-pill" id="severity-pill">
+          <div class="sev-dot"></div>
+          <span id="severity-label"></span>
+        </div>
+      </div>
+      <div class="conf-track"><div class="conf-fill" id="conf-fill"></div></div>
+    </div>
+
+    <div class="prob-grid" id="prob-grid"></div>
+
+    <div class="visual-card">
+      <div class="vc-title">🔍 Visual Explanation — Sound Region Analysis</div>
+      <div class="vc-sub" id="visual-subtitle">The heatmap highlights the frequency-time regions that most influenced the AI's prediction. Warmer colours indicate higher contribution to the diagnosis, improving transparency and trust in the result.</div>
+      <div class="spectrogram-wrap">
+        <canvas id="spectrogram-canvas" width="900" height="160"></canvas>
+      </div>
+      <div class="hm-legend">
+        <span class="hm-label">Low influence</span>
+        <div class="hm-legend-bar"></div>
+        <span class="hm-label">High influence</span>
+      </div>
+      <div class="region-tags" id="region-tags"></div>
+    </div>
+
+    <div class="info-card">
+      <h3 id="info-title"></h3>
+      <p id="info-body"></p>
+      <div class="rec-grid" id="rec-grid"></div>
+      <div class="disclaimer">⚕️&nbsp;<span>This is a <strong>research prototype</strong> and does not constitute medical advice. Always consult a qualified physician for clinical diagnosis and treatment.</span></div>
+    </div>
+
+    <button class="btn-report" id="btn-report" onclick="downloadReport()">
+      <span>📄</span>&nbsp; Download Diagnostic Report (PDF)
+    </button>
+  </div>
+
+  <footer>
+    <span>PneumoScan · Respiratory Intelligence · Research Prototype</span>
+    <span>⚠️ Not for clinical use</span>
+  </footer>
+</div>
+
+<div class="page" id="page-about">
+  <div class="about-hero">
+    <h1>About <em>PneumoScan</em></h1>
+    <p>An AI-powered respiratory screening interface rebuilt on top of the new recording-level backend. The deployed model is the pneumonia-focused strong CNN, evaluated with multi-window aggregation across the uploaded audio.</p>
+  </div>
+
+  <div class="about-section">
+    <div class="about-section-label">Platform Overview</div>
+    <h2>What PneumoScan does</h2>
+    <div class="overview-grid">
+      <div class="ov-card">
+        <div class="ov-num">01</div><div class="ov-icon">🎙️</div>
+        <div class="ov-name">Audio Ingestion</div>
+        <div class="ov-desc">Accepts lung sound recordings in WAV, MP3, FLAC, OGG or M4A format. The backend trims, resamples, and evaluates the recording without needing manual clip selection.</div>
+      </div>
+      <div class="ov-card">
+        <div class="ov-num">02</div><div class="ov-icon">🧠</div>
+        <div class="ov-name">Recording-Level Inference</div>
+        <div class="ov-desc">A custom strong CNN analyses multiple 5-second windows from the same recording, then averages probabilities to produce a more stable diagnosis than a single-clip prediction.</div>
+      </div>
+      <div class="ov-card">
+        <div class="ov-num">03</div><div class="ov-icon">📊</div>
+        <div class="ov-name">Transparent Outputs</div>
+        <div class="ov-desc">Returns class probabilities, severity, representative window details, and a real Grad-CAM attention heatmap generated from the uploaded recording.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="about-section">
+    <div class="about-section-label">Detected Conditions</div>
+    <h2>Four respiratory classes</h2>
+    <div class="outputs-grid">
+      <div class="out-card">
+        <div class="out-icon" style="font-size:24px;color:#38bdf8;">●</div>
+        <div class="out-body"><h4 style="color:#38bdf8;">Normal</h4><p>No abnormal wheeze or crackle pattern is dominant in the analysed recording. This is the healthy baseline class in the current model.</p></div>
+      </div>
+      <div class="out-card">
+        <div class="out-icon" style="font-size:24px;color:#fbbf24;">●</div>
+        <div class="out-body"><h4 style="color:#fbbf24;">Asthma</h4><p>Wheeze-dominant respiratory sounds associated with airway narrowing and bronchospasm. The model treats this as an abnormal but potentially reversible obstructive pattern.</p></div>
+      </div>
+      <div class="out-card">
+        <div class="out-icon" style="font-size:24px;color:#fb7185;">●</div>
+        <div class="out-body"><h4 style="color:#fb7185;">Pneumonia</h4><p>Crackle-dominant patterns that may indicate infection, fluid, or consolidation. This remains the hardest class and was the focus of the final retraining run.</p></div>
+      </div>
+      <div class="out-card">
+        <div class="out-icon" style="font-size:24px;color:#a78bfa;">●</div>
+        <div class="out-body"><h4 style="color:#a78bfa;">COPD</h4><p>Obstructive lung disease patterns with strong chronic airflow limitation cues. This is currently the most confidently learned class in the deployed model.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="about-section">
+    <div class="about-section-label">Model Performance</div>
+    <h2>Final deployed checkpoint</h2>
+    <p style="font-size:14px;color:var(--muted);line-height:1.8;max-width:640px;">These numbers come from the pneumonia-focused strong CNN evaluated at the recording level with 5-window aggregation and 50% overlap. They reflect the actual deployed model rather than the older Major Project metrics.</p>
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-val">81.4%</div><div class="perf-label">Recording Accuracy</div></div>
+      <div class="perf-card"><div class="perf-val">0.579</div><div class="perf-label">Macro F1 Score</div></div>
+      <div class="perf-card"><div class="perf-val">0.807</div><div class="perf-label">Weighted F1</div></div>
+      <div class="perf-card"><div class="perf-val">5</div><div class="perf-label">Windows Aggregated</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>PneumoScan · Respiratory Intelligence · Research Prototype</span>
+    <span>⚠️ Not for clinical use</span>
+  </footer>
+</div>
+
+</div>
+
+<script>
+const API_URL = "http://localhost:8080/predict";
+
+const CLASS_COLORS = { Normal:"#38bdf8", Asthma:"#fbbf24", Pneumonia:"#fb7185", COPD:"#a78bfa" };
+
+const SEVERITY_FALLBACK = {
+  Normal:    { level:"Low",      message:"No abnormal respiratory pattern detected." },
+  Asthma:    { level:"Moderate", message:"Airway narrowing pattern detected; clinical review recommended." },
+  Pneumonia: { level:"High",     message:"Possible pneumonia-related crackle pattern detected; prompt review advised." },
+  COPD:      { level:"High",     message:"Chronic obstructive pattern detected; specialist evaluation recommended." },
+};
+
+const ALERTS = {
+  Normal:    null,
+  Asthma:    { type:"warning", icon:"⚠️", title:"Medical Review Recommended", body:"Asthma-like wheeze patterns were detected. Consider clinical review, especially if symptoms are active." },
+  Pneumonia: { type:"urgent",  icon:"🚨", title:"Prompt Medical Attention Recommended", body:"The model found pneumonia-like crackle patterns. This class remains difficult, so combine the result with medical evaluation." },
+  COPD:      { type:"warning", icon:"⚠️", title:"Specialist Consultation Advised", body:"COPD-like obstructive patterns were detected. A pulmonology review can help confirm severity and next steps." },
+};
+
+const DISEASE_INFO = {
+  Normal: {
+    title:"✅ Normal Respiratory Pattern",
+    body:"No dominant abnormal respiratory pattern was detected in the uploaded recording. This does not replace clinical examination, but the analysed windows look closest to the model's healthy baseline.",
+    recs:[
+      {icon:"📅",title:"Routine monitoring", text:"Repeat the screening if symptoms appear or if you want to compare future recordings against this baseline."},
+      {icon:"🏃",title:"Maintain fitness", text:"Regular aerobic activity and breathing exercises support long-term respiratory resilience."},
+      {icon:"🚭",title:"Avoid irritants", text:"Limit smoke, dust, and strong environmental triggers that can affect airway health."},
+      {icon:"💧",title:"Stay hydrated", text:"Hydration helps keep airway secretions easier to clear naturally."},
+    ]
+  },
+  Asthma: {
+    title:"⚠️ Asthma Pattern Detected",
+    body:"The analysed recording shows a wheeze-dominant pattern consistent with asthma-like airway narrowing. This is a screening result and should be interpreted alongside symptoms and medical evaluation.",
+    recs:[
+      {icon:"🏥",title:"See a pulmonologist", text:"If symptoms are recurring, schedule a review for spirometry and clinical confirmation."},
+      {icon:"💊",title:"Medication review", text:"Discuss inhaler technique and controller options with a clinician if asthma is suspected."},
+      {icon:"🌿",title:"Identify triggers", text:"Track whether allergens, exercise, cold air, or smoke worsen symptoms."},
+      {icon:"📱",title:"Monitor trends", text:"Repeated recordings over time can help reveal whether airway symptoms are getting better or worse."},
+    ]
+  },
+  Pneumonia: {
+    title:"🚨 Pneumonia Pattern Detected",
+    body:"The recording contains crackle-heavy regions that pushed the model toward pneumonia. This class remains the hardest one in the dataset, so treat the prediction as a prompt for medical review rather than a diagnosis on its own.",
+    recs:[
+      {icon:"🏥",title:"Seek clinical review", text:"If fever, shortness of breath, chest pain, or persistent cough are present, medical assessment should not be delayed."},
+      {icon:"🩻",title:"Consider imaging", text:"Chest imaging and clinical examination remain important for confirming pneumonia."},
+      {icon:"🛏️",title:"Rest and hydrate", text:"If ill, rest and hydration remain supportive while awaiting medical advice."},
+      {icon:"📞",title:"Watch red flags", text:"Escalate quickly for worsening breathing, confusion, bluish lips, or signs of low oxygen."},
+    ]
+  },
+  COPD: {
+    title:"⚠️ COPD Pattern Detected",
+    body:"The model identified an obstructive respiratory pattern most consistent with COPD. In the current checkpoint this is the strongest learned class, but the result should still be confirmed clinically.",
+    recs:[
+      {icon:"🏥",title:"Pulmonology follow-up", text:"Specialist review and spirometry are important for confirming COPD and staging severity."},
+      {icon:"🚭",title:"Smoking cessation", text:"If relevant, quitting smoking is the highest-impact step for slowing disease progression."},
+      {icon:"💊",title:"Review inhaler plan", text:"Bronchodilator strategy and exacerbation prevention should be discussed with a clinician."},
+      {icon:"🏋️",title:"Pulmonary rehab", text:"Breathing exercises and supervised rehab can improve symptoms and quality of life."},
+    ]
+  }
+};
+
+const REGION_TAGS = {
+  Normal:    [{cls:"rt-low", text:"Smooth low-variance baseline"},{cls:"rt-low", text:"No dominant abnormal bursts"}],
+  Asthma:    [{cls:"rt-medium", text:"Wheeze-dominant upper band"},{cls:"rt-medium", text:"Airflow narrowing cues"}],
+  Pneumonia: [{cls:"rt-high", text:"Crackle-heavy transient bursts"},{cls:"rt-medium", text:"Infective pattern candidate"}],
+  COPD:      [{cls:"rt-high", text:"Strong obstructive pattern"},{cls:"rt-medium", text:"High-confidence chronic airflow cue"}],
+};
+
+let selectedFile = null;
+let lastResult = null;
+const LAST_RESULT_KEY = 'pneumoscan:last-result';
+let mediaRecorder = null;
+let mediaStream = null;
+let recordedChunks = [];
+
+function $(id) { return document.getElementById(id); }
+
+function openFilePicker() {
+  const input = $('file-input');
+  input.value = '';
+  input.click();
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+  $('page-' + name).classList.add('active');
+  $('nav-' + name).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+window.addEventListener('scroll', () => {
+  $('site-header').classList.toggle('scrolled', window.scrollY > 10);
+});
+
+$('file-input').addEventListener('change', event => applyFile(event.target.files[0]));
+$('drop-zone').addEventListener('dragover', event => {
+  event.preventDefault();
+  $('drop-zone').classList.add('dragover');
+});
+$('drop-zone').addEventListener('dragleave', () => $('drop-zone').classList.remove('dragover'));
+$('drop-zone').addEventListener('drop', event => {
+  event.preventDefault();
+  $('drop-zone').classList.remove('dragover');
+  if (event.dataTransfer.files[0]) applyFile(event.dataTransfer.files[0]);
+});
+
+function applyFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  $('fname').textContent = file.name;
+  $('fsize').textContent = fmtBytes(file.size) + '  ·  ' + (file.type || 'audio');
+  $('file-info').classList.add('show');
+  $('btn-analyse').classList.add('show');
+  $('waveform').classList.add('active');
+  $('error-box').classList.remove('show');
+}
+
+function clearFile() {
+  selectedFile = null;
+  $('file-input').value = '';
+  $('file-info').classList.remove('show');
+  $('btn-analyse').classList.remove('show');
+  $('waveform').classList.remove('active');
+  $('error-box').classList.remove('show');
+}
+
+function setRecordStatus(message, live = false) {
+  $('record-status').textContent = message;
+  $('record-status').classList.toggle('live', live);
+}
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setRecordStatus('Microphone recording is not supported in this browser.');
+    return;
+  }
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+
+    const preferredMimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+    ];
+    const mimeType = preferredMimeTypes.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || '';
+
+    mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined);
+    mediaRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+    mediaRecorder.onstop = async () => {
+      try {
+        const sourceBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const wavBlob = await convertBlobToWav(sourceBlob);
+        const recordedFile = new File([wavBlob], `live_recording_${Date.now()}.wav`, { type: 'audio/wav' });
+        const previewUrl = URL.createObjectURL(wavBlob);
+        $('record-preview').src = previewUrl;
+        $('record-preview').classList.add('show');
+        applyFile(recordedFile);
+        setRecordStatus(`Recorded clip ready: ${recordedFile.name}`);
+      } catch (error) {
+        setRecordStatus(`Could not process microphone recording: ${error.message}`);
+      } finally {
+        cleanupRecorder();
+      }
+    };
+
+    mediaRecorder.start();
+    $('btn-record-start').disabled = true;
+    $('btn-record-stop').disabled = false;
+    setRecordStatus('Recording from microphone... click Stop when finished.', true);
+  } catch (error) {
+    setRecordStatus(`Microphone permission failed: ${error.message}`);
+    cleanupRecorder();
+  }
+}
+
+function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+  mediaRecorder.stop();
+  $('btn-record-stop').disabled = true;
+  setRecordStatus('Finalising recording...');
+}
+
+function cleanupRecorder() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+  }
+  mediaRecorder = null;
+  mediaStream = null;
+  $('btn-record-start').disabled = false;
+  $('btn-record-stop').disabled = true;
+}
+
+async function convertBlobToWav(blob) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    throw new Error('AudioContext is not available.');
+  }
+
+  const audioContext = new AudioContextClass();
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    return audioBufferToWavBlob(audioBuffer);
+  } finally {
+    await audioContext.close();
+  }
+}
+
+function audioBufferToWavBlob(audioBuffer) {
+  const numberOfChannels = 1;
+  const sampleRate = audioBuffer.sampleRate;
+  const channelData = downmixToMono(audioBuffer);
+  const pcm = new Int16Array(channelData.length);
+
+  for (let i = 0; i < channelData.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, channelData[i]));
+    pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+
+  const headerSize = 44;
+  const buffer = new ArrayBuffer(headerSize + pcm.length * 2);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  writeAscii(view, 8, 'WAVE');
+  writeAscii(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numberOfChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+  view.setUint16(32, numberOfChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, 'data');
+  view.setUint32(40, pcm.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < pcm.length; i += 1) {
+    view.setInt16(offset, pcm[i], true);
+    offset += 2;
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+function downmixToMono(audioBuffer) {
+  const { numberOfChannels, length } = audioBuffer;
+  const mono = new Float32Array(length);
+  for (let channel = 0; channel < numberOfChannels; channel += 1) {
+    const samples = audioBuffer.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      mono[i] += samples[i] / numberOfChannels;
+    }
+  }
+  return mono;
+}
+
+function writeAscii(view, offset, value) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+}
+
+function fmtBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+async function runAnalysis() {
+  if (!selectedFile) return;
+  const fileToUpload = selectedFile;
+
+  $('error-box').classList.remove('show');
+  $('btn-analyse').disabled = true;
+  $('loading-panel').classList.add('show');
+
+  const stepIds = ['ls1', 'ls2', 'ls3', 'ls4'];
+  let stepIndex = 0;
+  const stepTimer = setInterval(() => {
+    stepIds.forEach((id, index) => {
+      const element = $(id);
+      element.className = index < stepIndex ? 'ls done' : index === stepIndex ? 'ls active' : 'ls';
+    });
+    stepIndex += 1;
+    if (stepIndex > stepIds.length) stepIndex = 0;
+  }, 650);
+
+  try {
+    const form = new FormData();
+    form.append('file', fileToUpload);
+
+    const response = await fetch(API_URL, { method: 'POST', body: form });
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Server error');
+    }
+
+    clearInterval(stepTimer);
+    stepIds.forEach(id => { $(id).className = 'ls done'; });
+    await delay(350);
+
+    $('loading-panel').classList.remove('show');
+    $('btn-analyse').disabled = false;
+
+    lastResult = {
+      ...data,
+      filename: data.filename || fileToUpload.name,
+      timestamp: new Date().toLocaleString(),
+    };
+
+    renderResults(lastResult);
+  } catch (error) {
+    clearInterval(stepTimer);
+    $('loading-panel').classList.remove('show');
+    $('btn-analyse').disabled = false;
+    $('error-msg').textContent = error.message.includes('fetch')
+      ? 'Cannot reach the backend. Ensure the Flask server is running on port 8080 and the /health endpoint returns ok.'
+      : error.message;
+    $('error-box').classList.add('show');
+  }
+}
+
+function renderResults(result) {
+  const { prediction, confidence, probabilities, severity, heatmap, windows_used, aggregation, representative_window, window_predictions } = result;
+  const accentColor = CLASS_COLORS[prediction] || '#38bdf8';
+  const resolvedSeverity = severity || SEVERITY_FALLBACK[prediction] || SEVERITY_FALLBACK.Normal;
+  persistResult(result);
+
+  document.documentElement.style.setProperty('--da', accentColor);
+
+  const alert = ALERTS[prediction];
+  const banner = $('alert-banner');
+  if (alert) {
+    banner.className = 'alert-banner show ' + alert.type;
+    $('alert-icon').textContent = alert.icon;
+    $('alert-title').textContent = alert.title;
+    $('alert-body').textContent = resolvedSeverity.message || alert.body;
+  } else {
+    banner.className = 'alert-banner';
+  }
+
+  $('diag-disease').textContent = prediction;
+  $('diag-conf').textContent = confidence.toFixed(1) + '%';
+  $('diag-meta').textContent = buildMetaLine(result);
+  $('conf-fill').style.width = '0%';
+  setTimeout(() => { $('conf-fill').style.width = confidence + '%'; }, 120);
+
+  const severityClass = severityLevelToClass(resolvedSeverity.level);
+  $('severity-pill').className = 'severity-pill ' + severityClass;
+  $('severity-label').textContent = (resolvedSeverity.level || 'Low') + ' Severity';
+
+  const grid = $('prob-grid');
+  grid.innerHTML = '';
+  Object.entries(probabilities).forEach(([label, pct]) => {
+    const color = CLASS_COLORS[label] || '#38bdf8';
+    const safeId = label.toLowerCase();
+    const card = document.createElement('div');
+    card.className = 'prob-card' + (label === prediction ? ' winner' : '');
+    card.style.setProperty('--pc', color);
+    card.innerHTML = `<div class="pc-label">${label}</div><div class="pc-val" id="pv-${safeId}">—</div><div class="prob-card-bar" id="pb-${safeId}"></div>`;
+    grid.appendChild(card);
+    setTimeout(() => {
+      $(`pv-${safeId}`).textContent = pct.toFixed(1) + '%';
+      $(`pb-${safeId}`).style.width = pct + '%';
+    }, 200);
+  });
+
+  $('visual-subtitle').textContent = representative_window
+    ? `The heatmap below comes from the model's representative window at ${representative_window.start_sec.toFixed(2)}s for a ${representative_window.duration_sec.toFixed(2)}s segment.`
+    : 'The heatmap highlights the frequency-time regions that most influenced the AI prediction.';
+
+  drawHeatmap(heatmap, prediction, confidence);
+  renderRegionTags(result);
+
+  const info = DISEASE_INFO[prediction] || { title: prediction, body: '', recs: [] };
+  $('info-title').textContent = info.title;
+  $('info-body').textContent = resolvedSeverity.message
+    ? `${resolvedSeverity.message} ${info.body}`
+    : info.body;
+  $('rec-grid').innerHTML = info.recs.map(rec => `
+    <div class="rec-item">
+      <div class="rec-icon">${rec.icon}</div>
+      <div class="rec-text"><strong>${rec.title}</strong>${rec.text}</div>
+    </div>
+  `).join('');
+
+  $('results').classList.add('show');
+  setTimeout(() => $('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+function buildMetaLine({ aggregation, windows_used, representative_window, prediction, secondary_prediction, secondary_confidence }) {
+  const pieces = [];
+  pieces.push(`Aggregation: ${aggregation || 'mean_probability'}`);
+  pieces.push(`Windows: ${windows_used ?? 1}`);
+  if (representative_window) {
+    const start = representative_window.start_sec.toFixed(2);
+    const end = (representative_window.start_sec + representative_window.duration_sec).toFixed(2);
+    pieces.push(`Representative: ${start}s–${end}s`);
+  }
+  if (secondary_prediction && secondary_prediction !== prediction) {
+    pieces.push(`Secondary: ${secondary_prediction} ${secondary_confidence.toFixed(1)}%`);
+  }
+  return pieces.join('  ·  ');
+}
+
+function restoreLastResult() {
+  const raw = sessionStorage.getItem(LAST_RESULT_KEY);
+  if (!raw) return;
+  try {
+    lastResult = JSON.parse(raw);
+    renderResults(lastResult);
+  } catch (error) {
+    sessionStorage.removeItem(LAST_RESULT_KEY);
+  }
+}
+
+function persistResult(result) {
+  const lightweight = {
+    ...result,
+    heatmap: result.heatmap || null,
+    window_predictions: Array.isArray(result.window_predictions) ? result.window_predictions.slice(0, 5) : [],
+  };
+  sessionStorage.setItem(LAST_RESULT_KEY, JSON.stringify(lightweight));
+}
+
+function severityLevelToClass(level) {
+  const normalized = String(level || '').toLowerCase();
+  if (normalized === 'high') return 'sev-high';
+  if (normalized === 'moderate' || normalized === 'medium') return 'sev-medium';
+  return 'sev-low';
+}
+
+function renderRegionTags({ prediction, windows_used, representative_window, window_predictions }) {
+  const baseTags = [...(REGION_TAGS[prediction] || [])];
+  baseTags.push({ cls: 'rt-low', text: `${windows_used ?? 1} windows analysed` });
+
+  if (representative_window) {
+    const start = representative_window.start_sec.toFixed(2);
+    const end = (representative_window.start_sec + representative_window.duration_sec).toFixed(2);
+    baseTags.push({ cls: 'rt-medium', text: `Representative window ${start}s–${end}s` });
+  }
+
+  if (Array.isArray(window_predictions) && window_predictions.length > 0) {
+    const topWindow = [...window_predictions].sort((a, b) => b.confidence - a.confidence)[0];
+    if (topWindow) {
+      baseTags.push({ cls: 'rt-high', text: `Top window ${topWindow.window_index + 1}: ${topWindow.prediction} ${topWindow.confidence.toFixed(1)}%` });
+    }
+  }
+
+  $('region-tags').innerHTML = baseTags.map(tag => `<span class="region-tag ${tag.cls}">${tag.text}</span>`).join('');
+}
+
+function drawHeatmap(heatmapDataUrl, prediction, confidence) {
+  const canvas = $('spectrogram-canvas');
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  if (!heatmapDataUrl) {
+    drawFallbackHeatmap(prediction, confidence);
+    return;
+  }
+
+  const image = new Image();
+  image.onload = () => {
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+  };
+  image.onerror = () => drawFallbackHeatmap(prediction, confidence);
+  image.src = heatmapDataUrl;
+}
+
+function drawFallbackHeatmap(prediction, confidence) {
+  const canvas = $('spectrogram-canvas');
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  const bg = ctx.createLinearGradient(0, 0, 0, height);
+  bg.addColorStop(0, '#0a1f35');
+  bg.addColorStop(0.4, '#061425');
+  bg.addColorStop(1, '#030a14');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  const rng = lcg(prediction.charCodeAt(0) + Math.floor(confidence));
+  for (let x = 0; x < width; x += 3) {
+    for (let y = 0; y < height; y += 1) {
+      const base = 0.05 + 0.1 * Math.sin((x / width) * Math.PI * 8 + rng() * 2);
+      const alpha = Math.max(0, Math.min(1, base + rng() * 0.07));
+      ctx.fillStyle = `rgba(56,189,248,${alpha})`;
+      ctx.fillRect(x, y, 3, 1);
+    }
+  }
+}
+
+function lcg(seed) {
+  let value = seed & 0xffffffff;
+  return () => {
+    value = (value * 1664525 + 1013904223) & 0xffffffff;
+    return (value >>> 0) / 0xffffffff;
+  };
+}
+
+async function downloadReport() {
+  if (!lastResult) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const { prediction, confidence, probabilities, filename, timestamp, severity } = lastResult;
+  const info = DISEASE_INFO[prediction] || { title: '', body: '', recs: [] };
+  const severityInfo = severity || SEVERITY_FALLBACK[prediction] || SEVERITY_FALLBACK.Normal;
+  const pageWidth = 210;
+  const margin = 18;
+  let y = 0;
+
+  function hexToRgb(hex) {
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+
+  function setText(hex) {
+    const [r, g, b] = hexToRgb(hex);
+    doc.setTextColor(r, g, b);
+  }
+
+  function setFill(hex) {
+    const [r, g, b] = hexToRgb(hex);
+    doc.setFillColor(r, g, b);
+  }
+
+  function setLine(hex) {
+    const [r, g, b] = hexToRgb(hex);
+    doc.setDrawColor(r, g, b);
+  }
+
+  const accent = CLASS_COLORS[prediction] || '#38bdf8';
+  const [pr, pg, pb] = hexToRgb(accent);
+
+  setFill('#03080f');
+  doc.rect(0, 0, 210, 297, 'F');
+  doc.setFillColor(pr, pg, pb);
+  doc.rect(0, 0, 210, 2, 'F');
+  y = 26;
+
+  doc.setFillColor(pr, pg, pb);
+  doc.roundedRect(margin, y - 6, 12, 12, 2, 2, 'F');
+  doc.setFontSize(18);
+  setText('#dff0fc');
+  doc.setFont('helvetica', 'bold');
+  doc.text('PneumoScan', margin + 16, y + 2);
+  setText('#38bdf8');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Respiratory Intelligence Platform', margin + 16, y + 8);
+  setText('#2a506e');
+  doc.setFontSize(8);
+  doc.text('Diagnostic Report', pageWidth - margin, y + 2, { align: 'right' });
+  doc.text(timestamp, pageWidth - margin, y + 8, { align: 'right' });
+  y += 20;
+
+  setLine('#0f2035');
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 10;
+
+  setText('#4d7fa8');
+  doc.setFontSize(8);
+  doc.text('FILE ANALYSED', margin, y);
+  setText('#dff0fc');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(filename || 'Unknown file', margin, y + 6);
+  y += 16;
+
+  setFill('#0b1828');
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 38, 4, 4, 'F');
+  setLine(accent);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 38, 4, 4, 'S');
+  doc.setFillColor(pr, pg, pb);
+  doc.roundedRect(margin, y, 50, 1.5, 0, 0, 'F');
+  setText('#4d7fa8');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('PREDICTED DIAGNOSIS', margin + 5, y + 8);
+  setText(accent);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.text(prediction, margin + 5, y + 22);
+  setText('#dff0fc');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Confidence: ${confidence.toFixed(1)}%`, margin + 5, y + 31);
+
+  const severityColor = severityLevelToClass(severityInfo.level) === 'sev-high' ? '#fb7185' : severityLevelToClass(severityInfo.level) === 'sev-medium' ? '#fbbf24' : '#34d399';
+  const [sr, sg, sb] = hexToRgb(severityColor);
+  doc.setFillColor(sr, sg, sb);
+  doc.roundedRect(pageWidth - margin - 40, y + 6, 36, 11, 3, 3, 'F');
+  setText('#03080f');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${severityInfo.level} Risk`, pageWidth - margin - 22, y + 13, { align: 'center' });
+
+  setFill('#0f2035');
+  doc.rect(margin + 58, y + 29, 78, 3, 'F');
+  doc.setFillColor(pr, pg, pb);
+  doc.rect(margin + 58, y + 29, 78 * (confidence / 100), 3, 'F');
+  y += 48;
+
+  setText('#4d7fa8');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLASS PROBABILITIES', margin, y);
+  y += 7;
+
+  const cardWidth = (pageWidth - 2 * margin - 9) / 4;
+  Object.entries(probabilities).forEach(([label, pct], index) => {
+    const x = margin + index * (cardWidth + 3);
+    const color = CLASS_COLORS[label] || '#38bdf8';
+    setFill('#0b1828');
+    doc.roundedRect(x, y, cardWidth, 22, 3, 3, 'F');
+    setLine(color);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, cardWidth, 22, 3, 3, 'S');
+    setText('#4d7fa8');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, x + 4, y + 8);
+    setText(color);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(pct.toFixed(1) + '%', x + 4, y + 18);
+  });
+  y += 32;
+
+  setText('#4d7fa8');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('VISUAL EXPLANATION — REPRESENTATIVE HEATMAP', margin, y);
+  y += 7;
+  try {
+    const imageData = $('spectrogram-canvas').toDataURL('image/png');
+    doc.addImage(imageData, 'PNG', margin, y, pageWidth - 2 * margin, 30);
+    y += 38;
+  } catch (error) {
+    y += 4;
+  }
+
+  setText('#4d7fa8');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLINICAL ASSESSMENT', margin, y);
+  y += 7;
+  setText('#dff0fc');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.text(info.title.replace(/[^\x00-\x7F]/g, '').trim(), margin, y);
+  y += 7;
+  setText('#4d7fa8');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const bodyLines = doc.splitTextToSize(`${severityInfo.message} ${info.body}`, pageWidth - 2 * margin);
+  doc.text(bodyLines, margin, y);
+  y += bodyLines.length * 5 + 8;
+
+  setText('#4d7fa8');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RECOMMENDED NEXT STEPS', margin, y);
+  y += 8;
+
+  const recHeight = 18;
+  const recWidth = (pageWidth - 2 * margin - 6) / 2;
+  info.recs.forEach((rec, index) => {
+    const x = margin + (index % 2) * (recWidth + 6);
+    const yOffset = y + Math.floor(index / 2) * (recHeight + 4);
+    setFill('#0b1828');
+    doc.roundedRect(x, yOffset, recWidth, recHeight, 3, 3, 'F');
+    setLine('#0f2035');
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, yOffset, recWidth, recHeight, 3, 3, 'S');
+    setText('#dff0fc');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(rec.title, x + 5, yOffset + 7);
+    setText('#4d7fa8');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(doc.splitTextToSize(rec.text, recWidth - 8).slice(0, 2), x + 5, yOffset + 13);
+  });
+  y += Math.ceil(info.recs.length / 2) * (recHeight + 4) + 10;
+
+  setFill('#1a1500');
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 16, 3, 3, 'F');
+  setLine('#fbbf24');
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 16, 3, 3, 'S');
+  setText('#fbbf24');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  const disclaimer = 'DISCLAIMER: This report is generated by an AI research prototype and does not constitute medical advice. Always consult a qualified physician for diagnosis and treatment decisions.';
+  doc.text(doc.splitTextToSize(disclaimer, pageWidth - 2 * margin - 12), margin + 6, y + 6);
+  y += 22;
+
+  setLine('#0f2035');
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
+  setText('#2a506e');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('PneumoScan  ·  Respiratory Intelligence  ·  Research Prototype', margin, y);
+  doc.text('Page 1 of 1', pageWidth - margin, y, { align: 'right' });
+
+  doc.save(`PneumoScan_Report_${prediction}_${Date.now()}.pdf`);
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+restoreLastResult();
+</script>
+</body>
+</html>
